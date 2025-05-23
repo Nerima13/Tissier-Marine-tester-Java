@@ -25,19 +25,21 @@ public class TicketDAO {
             con = dataBaseConfig.getConnection();
             PreparedStatement ps = con.prepareStatement(DBConstants.SAVE_TICKET);
             //ID, PARKING_NUMBER, VEHICLE_REG_NUMBER, PRICE, IN_TIME, OUT_TIME)
-            //ps.setInt(1,ticket.getId());
+            ps.setInt(1,ticket.getId());
             ps.setInt(1,ticket.getParkingSpot().getId());
             ps.setString(2, ticket.getVehicleRegNumber());
             ps.setDouble(3, ticket.getPrice());
             ps.setTimestamp(4, new Timestamp(ticket.getInTime().getTime()));
             ps.setTimestamp(5, (ticket.getOutTime() == null)?null: (new Timestamp(ticket.getOutTime().getTime())) );
-            return ps.execute();
+            return ps.executeUpdate() == 1;
         }catch (Exception ex){
             logger.error("Error fetching next available slot",ex);
         }finally {
             dataBaseConfig.closeConnection(con);
         }
-            return false;
+        System.out.println("Saved ticket with reg number: " + ticket.getVehicleRegNumber());
+        
+            return false; 
     }
 
     public Ticket getTicket(String vehicleRegNumber) {
@@ -66,22 +68,29 @@ public class TicketDAO {
         }finally {
             dataBaseConfig.closeConnection(con);
         }
+        System.out.println("Looking for ticket with reg number: " + vehicleRegNumber);
+        
             return ticket;
     }
 
     public boolean updateTicket(Ticket ticket) {
         Connection con = null;
         try {
-            con = dataBaseConfig.getConnection();
+        	con = dataBaseConfig.getConnection();
             PreparedStatement ps = con.prepareStatement(DBConstants.UPDATE_TICKET);
+            System.out.println("Updating ticket with ID: " + ticket.getId());
             ps.setDouble(1, ticket.getPrice());
             ps.setTimestamp(2, new Timestamp(ticket.getOutTime().getTime()));
-            ps.setInt(3,ticket.getId());
-            ps.execute();
-            return true;
-        }catch (Exception ex){
-            logger.error("Error saving ticket info",ex);
-        }finally {
+            ps.setInt(3, ticket.getId());
+            boolean success = ps.executeUpdate() == 1;
+            if (success) {
+                System.out.println("Updated ticket with reg number: " + ticket.getVehicleRegNumber());
+            }
+            return success;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            logger.error("Error saving ticket info", ex);
+        } finally {
             dataBaseConfig.closeConnection(con);
         }
         return false;
