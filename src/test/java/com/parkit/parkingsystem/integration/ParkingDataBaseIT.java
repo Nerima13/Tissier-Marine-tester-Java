@@ -103,6 +103,7 @@ public class ParkingDataBaseIT {
         Ticket firstTicket = ticketDAO.getTicket("ABCDEF");
         assertNotNull(firstTicket, "First ticket must not be null.");
         firstTicket.setInTime(new Date(System.currentTimeMillis() - 60 * 60 * 1000)); // 1h parking time
+        firstTicket.setOutTime(new Date());
         ticketDAO.updateTicket(firstTicket);
         
         parkingService.processExitingVehicle();
@@ -113,6 +114,7 @@ public class ParkingDataBaseIT {
         Ticket secondTicket = ticketDAO.getTicket("ABCDEF");
         assertNotNull(secondTicket, "Second ticket must not be null.");
         secondTicket.setInTime(new Date(System.currentTimeMillis() - 60 * 60 * 1000)); // 1h parking time
+        secondTicket.setOutTime(new Date());
         ticketDAO.updateTicket(secondTicket);
 
         parkingService.processExitingVehicle();
