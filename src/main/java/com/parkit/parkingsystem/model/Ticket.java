@@ -58,12 +58,12 @@ public class Ticket {
     public void setOutTime(Date outTime) {
         this.outTime = outTime;
     }
-    
+
     public boolean isRecurringUser() {
-    	return discount;
+        return discount;
     }
-    
+
     public void setDiscount(boolean discount) {
-    	this.discount = discount;
+        this.discount = discount;
     }
 }
