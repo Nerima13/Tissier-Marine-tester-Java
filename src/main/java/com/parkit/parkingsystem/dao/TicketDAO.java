@@ -8,10 +8,7 @@ import com.parkit.parkingsystem.model.Ticket;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.Timestamp;
+import java.sql.*;
 
 public class TicketDAO {
 
@@ -36,9 +33,7 @@ public class TicketDAO {
         }finally {
             dataBaseConfig.closeConnection(con);
         }
-        System.out.println("Saved ticket with reg number: " + ticket.getVehicleRegNumber());
-
-        return true;
+        return false;
     }
 
     public Ticket getTicket(String vehicleRegNumber) {
@@ -68,8 +63,6 @@ public class TicketDAO {
         }finally {
             dataBaseConfig.closeConnection(con);
         }
-        System.out.println("Looking for ticket with reg number: " + vehicleRegNumber);
-
         return ticket;
     }
 
@@ -92,20 +85,25 @@ public class TicketDAO {
         return false;
     }
 
-    public int getNbTicket(final String vehicleRegNumber) {
-        int nbTicket = 0;
-        try (final Connection con = dataBaseConfig.getConnection()) {
-            try (final PreparedStatement ps = con.prepareStatement(DBConstants.GET_NB_TICKET)) {
-                ps.setString(1, vehicleRegNumber);
-                try (final ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        nbTicket = rs.getInt(1);
-                    }
-                }
+
+    public boolean hasVisited(String vehicleRegNumber) {
+        if(getNbTicket(vehicleRegNumber) > 1) return true;
+    return false;
+    }
+
+    public int getNbTicket(String vehicleRegNumber){
+        Connection con = null;
+        try{
+            con = dataBaseConfig.getConnection();
+            PreparedStatement ps = con.prepareStatement(DBConstants.COUNT_VISIT);
+            ps.setString(1, vehicleRegNumber);
+            ResultSet count = ps.executeQuery();
+            if(count.next()){
+               return count.getInt(1);
             }
-        } catch (Exception ex) {
-            logger.error("Error fetching next available slot", ex);
+            return 0;
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
         }
-        return nbTicket;
     }
 }

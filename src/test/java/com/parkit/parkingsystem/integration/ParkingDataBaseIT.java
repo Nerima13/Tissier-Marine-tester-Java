@@ -6,7 +6,9 @@ import com.parkit.parkingsystem.dao.ParkingSpotDAO;
 import com.parkit.parkingsystem.dao.TicketDAO;
 import com.parkit.parkingsystem.integration.config.DataBaseTestConfig;
 import com.parkit.parkingsystem.integration.service.DataBasePrepareService;
+import com.parkit.parkingsystem.model.ParkingSpot;
 import com.parkit.parkingsystem.model.Ticket;
+import com.parkit.parkingsystem.service.FareCalculatorService;
 import com.parkit.parkingsystem.service.ParkingService;
 import com.parkit.parkingsystem.util.InputReaderUtil;
 import org.junit.jupiter.api.AfterAll;
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -32,81 +36,85 @@ public class ParkingDataBaseIT {
     private static ParkingSpotDAO parkingSpotDAO;
     private static TicketDAO ticketDAO;
     private static DataBasePrepareService dataBasePrepareService;
+    private static FareCalculatorService  fareCalculatorService;
+
+    private static final int hours = 24;
 
     @Mock
     private static InputReaderUtil inputReaderUtil;
 
     @BeforeAll
-    private static void setUp() throws Exception{
+    public static void setUp() throws Exception{
         parkingSpotDAO = new ParkingSpotDAO();
         parkingSpotDAO.dataBaseConfig = dataBaseTestConfig;
         ticketDAO = new TicketDAO();
         ticketDAO.dataBaseConfig = dataBaseTestConfig;
         dataBasePrepareService = new DataBasePrepareService();
+        fareCalculatorService = new FareCalculatorService(ticketDAO);
     }
 
     @BeforeEach
-    private void setUpPerTest() throws Exception {
+    public void setUpPerTest() throws Exception {
         when(inputReaderUtil.readSelection()).thenReturn(1);
         when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn("ABCDEF");
         dataBasePrepareService.clearDataBaseEntries();    
     }
 
     @AfterAll
-    private static void tearDown(){
-
+    public static void tearDown(){
     }
 
     @Test
     public void testParkingACar() {
-		// GIVEN
-		ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
-
-		// WHEN
-		parkingService.processIncomingVehicle();
-
-		// THEN
-		assertNotNull(ticketDAO.getTicket("ABCDEF"));
-		assertEquals(parkingSpotDAO.getNextAvailableSlot(ParkingType.CAR), 2);
-
-	}
-
-    @Test
-	public void testParkingLotExit() {
-		// GIVEN
-    	testParkingACar();
-		ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
-		
-		// WHEN
-		parkingService.processExitingVehicle();
-
-		// THEN
-		assertNotNull(ticketDAO.getTicket("ABCDEF"));
-		assertEquals(ticketDAO.getTicket("ABCDEF").getPrice(), 0);
-		assertNotNull(ticketDAO.getTicket("ABCDEF").getOutTime());
-    }
-    
-    @Test
-    void testParkingLotExitRecurringUser() throws Exception {
+        // Arrange
         ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
 
-        // First entry - Register User
+        // Act
         parkingService.processIncomingVehicle();
+
+        // Assert
+        assertNotNull(ticketDAO.getTicket("ABCDEF"));
+        assertEquals(2, parkingSpotDAO.getNextAvailableSlot(ParkingType.CAR));
+    }
+
+    @Test
+    public void testParkingLotExit() {
+        // Arrange
+        ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
+        testParkingACar();
+
+        // Act
         parkingService.processExitingVehicle();
-        
-        // Second entry - Recurring User
-        parkingService.processIncomingVehicle();
-        
-        Date outTime = new Date(System.currentTimeMillis() + (60 * 60 * 1000)); // 1 hour parking time later
-        
-        
+
+        // Assert
+        assertNotNull(ticketDAO.getTicket("ABCDEF"));
+        assertEquals(0, ticketDAO.getTicket("ABCDEF").getPrice());
+        assertNotNull(ticketDAO.getTicket("ABCDEF").getOutTime());
+    }
+
+    @Test
+    public void calculateFareCarRecurrentUser(){
+        ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
+
+        testParkingACar();
         parkingService.processExitingVehicle();
-        
-        // Check if the discount has been applied
-        Ticket updatedTicket = ticketDAO.getTicket("ABCDEF");
-        assertNotNull(updatedTicket.getOutTime());
-        
-        double expectedPrice = Fare.CAR_RATE_PER_HOUR * 0.95;
-        assertEquals(expectedPrice, updatedTicket.getPrice(), 0.01);
+
+        testParkingACar();
+        parkingService.processExitingVehicle();
+
+        modifyOutTime();
+        fareCalculatorService.calculateFare(ticketDAO.getTicket("ABCDEF"));
+
+        double expectedPrice = hours *Fare.CAR_RATE_PER_HOUR * 0.95;
+        assertEquals(expectedPrice, ticketDAO.getTicket("ABCDEF").getPrice(), 0.01);
+    }
+
+    private void modifyOutTime(){
+        Date outTime = new Date();
+        outTime.setTime(System.currentTimeMillis() + (hours * 60 * 60 * 1000));//24 hours parking time should give 24 * parking fare per hour
+
+        Ticket lastTicket = ticketDAO.getTicket("ABCDEF");
+        lastTicket.setOutTime(outTime);
+        ticketDAO.updateTicket(lastTicket);
     }
 }
