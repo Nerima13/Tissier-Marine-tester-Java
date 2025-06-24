@@ -1,7 +1,5 @@
 package com.parkit.parkingsystem.service;
 
-import java.sql.Timestamp;
-import java.util.Calendar;
 import java.util.Date;
 
 import com.parkit.parkingsystem.constants.Fare;

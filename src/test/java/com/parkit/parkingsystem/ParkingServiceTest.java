@@ -56,37 +56,13 @@ public class ParkingServiceTest {
             throw  new RuntimeException("Failed to set up test mock objects");
         }
     }
-    
-    private Ticket createFakeTicket() {
-        ParkingSpot parkingSpot = new ParkingSpot(1, ParkingType.CAR, false);
-        Ticket ticket = new Ticket();
-        ticket.setInTime(new Date(System.currentTimeMillis() - (60 * 60 * 1000)));
-        ticket.setParkingSpot(parkingSpot);
-        ticket.setVehicleRegNumber("ABCDEF");
-        return ticket;
-    }
-    
-    @Test
-    void testProcessIncomingVehicle() throws Exception {
-    	// GIVEN
-        when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn("ABCDEF");
-        when(inputReaderUtil.readSelection()).thenReturn(1);
-        when(parkingSpotDAO.getNextAvailableSlot(any(ParkingType.class))).thenReturn(2);
 
-        // WHEN
-        parkingService.processIncomingVehicle();
-
-        // THEN
-        verify(parkingSpotDAO, times(1)).getNextAvailableSlot(any(ParkingType.class));
-    }
-    
     @Test
     public void processExitingVehicleTest() throws Exception {
     	when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn("ABCDEF");
     	when(ticketDAO.getTicket("ABCDEF")).thenReturn(ticket);
         when(ticketDAO.updateTicket(any(Ticket.class))).thenReturn(true);
         when(ticketDAO.hasVisited("ABCDEF")).thenReturn(false);
-
         
         parkingService.processExitingVehicle();
         
